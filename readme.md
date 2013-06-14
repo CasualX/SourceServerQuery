@@ -1,19 +1,15 @@
-SourceServerQuery
------------------
+# SourceServerQuery
 
 C++ Library for querying Source game servers.
 Currently only supports rules queries and targets VS 2010 (but I'm sure it'll work with any other version).
 
-Why?
-====
+### Why?
 The C alternative looks horrible and has a bunch of unneeded stuff.
 
-How?
-====
+### How?
 Add libssq\public as include and library path.
 
-Example
-=======
+### Example
 	#include <cstdio>
     #include "ssq.h"
 	class CResponse : public ssq::IRulesResponse
