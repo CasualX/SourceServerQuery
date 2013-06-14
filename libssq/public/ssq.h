@@ -26,7 +26,7 @@ public:
 	virtual void Disconnect() = 0;
 	// Begin the query, when async it'll return immediately
 	// Returns true if the request was a success or if the async thread was started correctly
-	virtual bool Perform( bool async ) = 0;
+	virtual bool Perform( bool async = false ) = 0;
 	// Cancel or wait for the query to finish
 	virtual void Wait( bool cancel = false ) = 0;
 };
@@ -92,8 +92,8 @@ public:
 };
 
 // Create a rules query, you must delete this when done! Always returns a valid handle
-IQuery* ServerRules( const char* address, IRulesResponse* resp );
-IQuery* PlayerDetails( const char* address, IPlayersResponse* resp );
-IQuery* ServerInfo( const char* address, IServerResponse* resp );
+IQuery* ServerRules( IRulesResponse* resp );
+IQuery* PlayerDetails( IPlayersResponse* resp );
+IQuery* ServerInfo( IServerResponse* resp );
 
 }

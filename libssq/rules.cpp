@@ -68,11 +68,9 @@ void CQueryRules::Parse( const char* str, long size )
 
 
 
-IQuery* ServerRules( const char* address, IRulesResponse* resp )
+IQuery* ServerRules( IRulesResponse* resp )
 {
 	CBaseQuery* q = new CQueryRules( resp );
-	q->Connect( address, 5000 );
-	q->Perform( true );
 	return q;
 }
 
