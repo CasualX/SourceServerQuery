@@ -4,6 +4,16 @@
 // Public interface for SSQ
 //----------------------------------------------------------------
 
+// Tell the linker to include some libraries for us.
+#ifndef _LIB
+#pragma comment(lib, "Ws2_32.lib")
+#ifdef _DEBUG
+#pragma comment(lib, "libssqd.lib")
+#else
+#pragma comment(lib, "libssq.lib")
+#endif // _DEBUG
+#endif // !_LIB
+
 namespace ssq
 {
 
@@ -18,7 +28,7 @@ public:
 	// Returns true if the request was a success or if the async thread was started correctly
 	virtual bool Perform( bool async ) = 0;
 	// Cancel or wait for the query to finish
-	virtual void Wait( bool cancel ) = 0;
+	virtual void Wait( bool cancel = false ) = 0;
 };
 
 // Response callback for a rules query
@@ -30,6 +40,7 @@ public:
 	// Finished the query
 	virtual void RulesFinished( bool success ) = 0;
 };
+
 // Response callback for a player details query
 class IPlayersResponse
 {
@@ -39,6 +50,7 @@ public:
 	// Finished the query
 	virtual void PlayersFinished( bool success ) = 0;
 };
+
 // Response callback for server info
 struct gameserver_t
 {
@@ -69,8 +81,6 @@ struct gameserver_t
 	//	bool mp;
 	//	bool dll;
 	//} mod;
-
-
 };
 class IServerResponse
 {
@@ -80,7 +90,6 @@ public:
 	// On failure
 	virtual void ServerFailed() = 0;
 };
-
 
 // Create a rules query, you must delete this when done! Always returns a valid handle
 IQuery* ServerRules( const char* address, IRulesResponse* resp );
