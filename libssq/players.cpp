@@ -48,7 +48,6 @@ bool CQueryPlayers::Thread()
 
 failure:
 	_cb->PlayersFinished( false );
-	int err = ::WSAGetLastError();
 	return false;
 }
 

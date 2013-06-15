@@ -60,15 +60,16 @@ found_port:
 
 	// Lookup host name
 
-	addrinfo hint;
-	hint.ai_family = AF_INET;
-	hint.ai_socktype = SOCK_DGRAM;
-	hint.ai_protocol = IPPROTO_UDP;
-	hint.ai_addrlen = 0;
-	hint.ai_canonname = nullptr;
-	hint.ai_addr = nullptr;
-	hint.ai_flags = 0;
-	hint.ai_next = nullptr;
+	addrinfo hint = {
+		AI_PASSIVE,
+		AF_INET,
+		SOCK_DGRAM,
+		IPPROTO_UDP,
+		0,
+		nullptr,
+		nullptr,
+		nullptr,
+	};
 
 	addrinfo* ptr;
 	if ( ::getaddrinfo( buf, port, &hint, &ptr ) || !ptr )
@@ -81,7 +82,7 @@ found_port:
 	{
 		_addr = *(sockaddr_in*) ptr->ai_addr;
 		if ( portnr )
-			_addr.sin_port = htons( portnr );
+			_addr.sin_port = ::htons( portnr );
 
 		// Bind our socket
 		// Ignoring errors here as these are unlikely to fail, they'll be reported later anyway...
@@ -90,7 +91,6 @@ found_port:
 		local.sin_family = AF_INET;
 		local.sin_addr.s_addr = INADDR_ANY;
 		local.sin_port = 0;
-		//(__int64&)local.sin_zero = 0;
 
 		::bind( _socket, (const sockaddr*)&local, sizeof(local) );
 		::setsockopt( _socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout) );
@@ -147,6 +147,10 @@ bool CBaseQuery::Perform( bool async )
 	}
 	else
 	{
+#ifdef _DEBUG
+		// Testing to see what went wrong...
+		int err = ::WSAGetLastError();
+#endif // _DEBUG
 		return Thread();
 	}
 }
