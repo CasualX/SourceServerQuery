@@ -119,6 +119,10 @@ void CBaseQuery::Disconnect()
 	if ( _thread )
 	{
 		::WaitForSingleObject( _thread, INFINITE );
+#ifdef _DEBUG
+		DWORD code;
+		::GetExitCodeThread( _thread, &code );
+#endif // _DEBUG
 		::CloseHandle( _thread );
 		_thread = NULL;
 	}
@@ -147,11 +151,12 @@ bool CBaseQuery::Perform( bool async )
 	}
 	else
 	{
+		bool s = Thread();
 #ifdef _DEBUG
 		// Testing to see what went wrong...
 		int err = ::WSAGetLastError();
 #endif // _DEBUG
-		return Thread();
+		return s;
 	}
 }
 void CBaseQuery::Wait( bool cancel )
@@ -169,7 +174,12 @@ void CBaseQuery::Wait( bool cancel )
 DWORD CBaseQuery::Thunk( PVOID param )
 {
 	CBaseQuery* q = (CBaseQuery*)param;
-	return q->Thread()==false;
+	q->Thread();
+#ifdef _DEBUG
+	return ::WSAGetLastError();
+#else
+	return 0;
+#endif // _DEBUG
 }
 bool CBaseQuery::Challenge( unsigned char type )
 {

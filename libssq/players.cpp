@@ -5,7 +5,7 @@
 namespace ssq
 {
 
-SSQ_INTERFACE CQueryPlayers : public CBaseQuery
+class CQueryPlayers : public CBaseQuery
 {
 public:
 	CQueryPlayers( IPlayersResponse* cb ) : _cb(cb) { }
@@ -20,6 +20,7 @@ bool CQueryPlayers::Thread()
 	// Local vars
 	unsigned char buf[1260];
 	long bytes;
+	bool s = false;
 
 	// Request rules
 	if ( !Challenge( A2S_PLAYER ) )
@@ -31,24 +32,28 @@ bool CQueryPlayers::Thread()
 	if ( *(long*)(buf+0)==-1 && buf[4]==S2A_PLAYER )
 	{
 		unsigned char num = buf[5];
-		unsigned char* it = buf+5;
+		unsigned char* it = buf+6;
 		unsigned char* end = buf+bytes;
 
 		for ( ; num; --num )
 		{
 			unsigned char index = *it++;
 			const char* name = (const char*) it;
-			while ( *it++ ) { if ( it>=end ) goto failure; }
+			while ( *it++ ) { if ( it>=end )
+				goto failure; }
 			long score = *((long*&)it)++;
 			float& duration = *((float*&)it)++;
-			if ( it>end ) goto failure;
+			if ( it>end )
+				goto failure;
 			_cb->PlayersAdd( name, score, duration );
 		}
+
+		s = true;
 	}
 
 failure:
-	_cb->PlayersFinished( false );
-	return false;
+	_cb->PlayersFinished( s );
+	return s;
 }
 
 
