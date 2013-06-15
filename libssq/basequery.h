@@ -46,14 +46,14 @@ struct header_multi_t : public header_t
 
 
 
-class CBaseQuery : public IQuery
+SSQ_INTERFACE CBaseQuery : public IQuery
 {
 public:
 	CBaseQuery();
 	~CBaseQuery();
 
 	// Create the socket and connect
-	virtual bool Connect( const char* address, long timeout );
+	virtual bool Connect( const char* address, unsigned short port, long timeout );
 	// Destroy the socket
 	virtual void Disconnect();
 	// Send some data

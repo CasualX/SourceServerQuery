@@ -58,7 +58,9 @@ overflow:
 
 failure:
 	_cb->RulesFinished( false );
+#ifdef _DEBUG
 	int err = ::WSAGetLastError();
+#endif // _DEBUG
 	return false;
 }
 void CQueryRules::Parse( const char* str, long size )

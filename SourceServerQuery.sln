@@ -3,6 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual C++ Express 2010
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libssq", "libssq\libssq.vcxproj", "{B6BEEB75-DF9F-44D8-A397-36B75AC8E1BE}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ssquery", "ssquery\ssquery.vcxproj", "{33E0D9CA-1165-4D6F-BC13-71082B85DB12}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B6BEEB75-DF9F-44D8-A397-36B75AC8E1BE} = {B6BEEB75-DF9F-44D8-A397-36B75AC8E1BE}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -13,6 +18,10 @@ Global
 		{B6BEEB75-DF9F-44D8-A397-36B75AC8E1BE}.Debug|Win32.Build.0 = Debug|Win32
 		{B6BEEB75-DF9F-44D8-A397-36B75AC8E1BE}.Release|Win32.ActiveCfg = Release|Win32
 		{B6BEEB75-DF9F-44D8-A397-36B75AC8E1BE}.Release|Win32.Build.0 = Release|Win32
+		{33E0D9CA-1165-4D6F-BC13-71082B85DB12}.Debug|Win32.ActiveCfg = Debug|Win32
+		{33E0D9CA-1165-4D6F-BC13-71082B85DB12}.Debug|Win32.Build.0 = Debug|Win32
+		{33E0D9CA-1165-4D6F-BC13-71082B85DB12}.Release|Win32.ActiveCfg = Release|Win32
+		{33E0D9CA-1165-4D6F-BC13-71082B85DB12}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

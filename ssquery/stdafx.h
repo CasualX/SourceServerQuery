@@ -7,15 +7,6 @@
 
 #include "targetver.h"
 
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <tlhelp32.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <intrin.h>
-
+#include <cstdio>
 #include <cstdlib>
-#include <cassert>
-
-#include <exception>
-
+#include <cstring>

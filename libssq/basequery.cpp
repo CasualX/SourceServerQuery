@@ -30,7 +30,7 @@ CBaseQuery::~CBaseQuery()
 {
 	Disconnect();
 }
-bool CBaseQuery::Connect( const char* address, long timeout )
+bool CBaseQuery::Connect( const char* address, unsigned short portnr, long timeout )
 {
 	if ( _socket!=INVALID_SOCKET || _thread )
 	{
@@ -39,50 +39,72 @@ bool CBaseQuery::Connect( const char* address, long timeout )
 		return false;
 	}
 
-	// Create buffer to separate ip from port
-	// NOTE! MUST be an IP address!
+	// Separate host from port
 
 	char buf[64];
-	unsigned int port = 0;
-	strcpy_s( buf, address );
-	for ( size_t i = 0; buf[i]; i++ )
+	const char* port = nullptr;
+	for ( unsigned int i = 0; address[i]; i++ )
 	{
-		if ( buf[i]==':' )
+		char& c = buf[i] = address[i];
+		if ( c==':' )
 		{
-			buf[i] = 0;
-			port = atoi( buf+i+1 );
-			break;
+			c = 0;
+			port = address+i+1;
+			goto found_port;
 		}
 	}
-
-	// Setup dest addr
-
-	unsigned long ip = inet_addr( buf );
-	if ( ip==INADDR_ANY || ip==INADDR_BROADCAST )
+	// A port is required!
+	if ( !portnr )
 		return false;
-	_addr.sin_family = AF_INET;
-	_addr.sin_addr.s_addr = ip;
-	_addr.sin_port = htons(port);
-	
-	// Setup local addr
+found_port:
 
-	::sockaddr_in local;
-	local.sin_family = AF_INET;
-	local.sin_addr.s_addr = INADDR_ANY;
-	local.sin_port = 0;
+	// Lookup host name
 
-	// create the socket
+	addrinfo hint;
+	hint.ai_family = AF_INET;
+	hint.ai_socktype = SOCK_DGRAM;
+	hint.ai_protocol = IPPROTO_UDP;
+	hint.ai_addrlen = 0;
+	hint.ai_canonname = nullptr;
+	hint.ai_addr = nullptr;
+	hint.ai_flags = 0;
+	hint.ai_next = nullptr;
 
-	if ( ( _socket = ::socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP ) )==INVALID_SOCKET )
-		return false;
-	
-	if ( ::bind( _socket, (sockaddr*)&local, sizeof(local) ) )
+	addrinfo* ptr;
+	if ( ::getaddrinfo( buf, port, &hint, &ptr ) || !ptr )
 		return false;
 
-	if ( ::setsockopt( _socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout) ) )
-		return false;
+	// Create the socket
 
-	return true;
+	_socket = ::socket( ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol );
+	if ( _socket!=INVALID_SOCKET )
+	{
+		_addr = *(sockaddr_in*) ptr->ai_addr;
+		if ( portnr )
+			_addr.sin_port = htons( portnr );
+
+		// Bind our socket
+		// Ignoring errors here as these are unlikely to fail, they'll be reported later anyway...
+
+		sockaddr_in local;
+		local.sin_family = AF_INET;
+		local.sin_addr.s_addr = INADDR_ANY;
+		local.sin_port = 0;
+		//(__int64&)local.sin_zero = 0;
+
+		::bind( _socket, (const sockaddr*)&local, sizeof(local) );
+		::setsockopt( _socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout) );
+
+		::freeaddrinfo( ptr );
+		return true;
+	}
+
+	::freeaddrinfo( ptr );
+
+#ifdef _DEBUG
+	int err = ::WSAGetLastError();
+#endif // _DEBUG
+	return false;
 }
 void CBaseQuery::Disconnect()
 {

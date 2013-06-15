@@ -17,24 +17,12 @@
     <ClInclude Include="targetver.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="basequery.h">
-      <Filter>headers</Filter>
-    </ClInclude>
-    <ClInclude Include="public\ssq.h">
-      <Filter>headers</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="basequery.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="rules.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="players.cpp">
+    <ClCompile Include="ssquery.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
