@@ -135,6 +135,28 @@ long CBaseQuery::Recv( void* buf, long bytes )
 {
 	return ::recv( _socket, (char*)buf, bytes, 0 );
 }
+bool CBaseQuery::Recv( bf_read& bf )
+{
+	bf.bytes = ::recv( _socket, bf.raw, sizeof(bf.raw), 0 );
+	bf.it = bf.raw;
+	return bf.bytes>0;
+}
+bool CBaseQuery::Read( bf_read& bf )
+{
+	// Buffer, 1260 is steam max packet size before split happens
+	unsigned char temp[1260];
+	// Buffers for each packet so we can put them in order
+	unsigned char* packets[4] = { nullptr, nullptr, nullptr, nullptr };
+
+	do
+	{
+		// Read a packet
+		Recv( temp, sizeof(temp) );
+
+	}
+	while ( true );
+	return false;
+}
 bool CBaseQuery::Perform( bool async )
 {
 	// Need an active socket and not already performing

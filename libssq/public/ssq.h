@@ -64,7 +64,6 @@ public:
 // Response callback for server info
 struct gameserver_t
 {
-	char* address;
 	char* name;
 	char* map;
 	char* folder;
@@ -81,16 +80,28 @@ struct gameserver_t
 	bool password;
 	bool vac;
 
-	//bool ismod;
-	//struct mod_t
-	//{
-	//	char* website;
-	//	char* download;
-	//	long version;
-	//	long size;
-	//	bool mp;
-	//	bool dll;
-	//} mod;
+	char* version;
+
+	struct extra_data_flags_t
+	{
+		unsigned char flags;
+
+		inline bool has_port() { return (flags&0x80)!=0; }
+		unsigned short port;
+
+		inline bool has_steamid() { return (flags&0x10)!=0; }
+		unsigned long long steamid;
+
+		inline bool has_stv() { return (flags&0x40)!=0; }
+		unsigned short stv_port;
+		char* stv_name;
+
+		inline bool has_tags() { return (flags&0x20)!=0; }
+		char* tags;
+
+		inline bool has_gameid() { return (flags&0x01)!=0; }
+		unsigned long long gameid;
+	} edf;
 };
 SSQ_INTERFACE IServerResponse
 {

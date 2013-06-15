@@ -37,5 +37,8 @@
     <ClCompile Include="players.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="info.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

@@ -88,6 +88,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="basequery.cpp" />
+    <ClCompile Include="info.cpp" />
     <ClCompile Include="players.cpp" />
     <ClCompile Include="rules.cpp" />
     <ClCompile Include="stdafx.cpp">

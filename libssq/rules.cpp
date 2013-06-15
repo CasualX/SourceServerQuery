@@ -21,42 +21,31 @@ CQueryRules::CQueryRules( IRulesResponse* cb ) : _cb(cb)
 }
 bool CQueryRules::Thread()
 {
-	// Local vars
-	unsigned char buf[1260];
-	long bytes;
-
-	// Request rules
-	if ( !Challenge( A2S_RULES ) )
-		goto failure;
-
 	// Process rules
 	// FIXME! Support multi-packet and async responses!
 	// FIXME! Figure out why I get an empty multi-packet header here (need to skip 0xC bytes)!
-	bytes = Recv( buf, sizeof(buf) );
-	if ( bytes<0xC )
-		goto failure;
-	char* it = (char*)( buf+0xC );
-	if ( it[4]!=S2A_RULES )
-		goto failure;
+	bf_read bf;
 
-	long num = *(unsigned short*)(it+5);
-	it = (char*)( it+7 );
-	char* end = (char*)( it+bytes );
-	for ( ; num; --num )
+	if ( Challenge( A2S_RULES ) && Recv( bf ) && bf.Skip(0xC+4) && bf.Read<char>()==S2A_RULES )
 	{
-		const char* rule = it;
-		while ( *it++ ) { if ( it>=end ) goto overflow; }
-		const char* value = it;
-		while ( *it++ ) { if ( it>=end ) goto overflow; }
-		_cb->RulesResponded( rule, value );
+		long num = bf.Read<unsigned short>();
+		for ( ; num; --num )
+		{
+			const char* rule;
+			const  char* value;
+			if ( ( rule = bf.ReadString() ) && ( value = bf.ReadString() ) )
+			{
+				_cb->RulesResponded( rule, value );
+			}
+			else
+			{
+				// For now ignore overflows...
+				break;
+			}
+		}
+		_cb->RulesFinished( true );
+		return true;
 	}
-
-overflow:
-	// For now ignore overflows...
-	_cb->RulesFinished( true );
-	return true;
-
-failure:
 	_cb->RulesFinished( false );
 	return false;
 }

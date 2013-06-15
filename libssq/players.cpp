@@ -17,43 +17,33 @@ private:
 
 bool CQueryPlayers::Thread()
 {
-	// Local vars
-	unsigned char buf[1260];
-	long bytes;
-	bool s = false;
+	bf_read bf;
 
-	// Request rules
-	if ( !Challenge( A2S_PLAYER ) )
-		goto failure;
-
-	// Process players
-	bytes = Recv( buf, sizeof(buf) );
-
-	if ( *(long*)(buf+0)==-1 && buf[4]==S2A_PLAYER )
+	// Request players
+	if ( Challenge( A2S_PLAYER ) && Recv( bf ) && bf.Read<long>()==-1 && bf.Read<char>()==S2A_PLAYER )
 	{
-		unsigned char num = buf[5];
-		unsigned char* it = buf+6;
-		unsigned char* end = buf+bytes;
+		// Alleged number of players
+		unsigned char num = bf.Read<unsigned char>();
 
 		for ( ; num; --num )
 		{
-			unsigned char index = *it++;
-			const char* name = (const char*) it;
-			while ( *it++ ) { if ( it>=end )
-				goto failure; }
-			long score = *((long*&)it)++;
-			float& duration = *((float*&)it)++;
-			if ( it>end )
+			unsigned char index = bf.Read<unsigned char>();
+			const char* name = bf.ReadString();
+			if ( !name )
 				goto failure;
+			long score = bf.Read<long>();
+			float& duration = bf.Read<float>();
+
 			_cb->PlayersAdd( name, score, duration );
 		}
 
-		s = true;
+		_cb->PlayersFinished( true );
+		return true;
 	}
 
 failure:
-	_cb->PlayersFinished( s );
-	return s;
+	_cb->PlayersFinished( false );
+	return false;
 }
 
 

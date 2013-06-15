@@ -44,6 +44,54 @@ struct header_multi_t : public header_t
 };
 #pragma pack(pop)
 
+// Really need this...
+class bf_read
+{
+public:
+	template< typename T >
+	inline T& Read() { return *((T*&)it)++; }
+	
+	template< typename T >
+	inline bool Read( T& t )
+	{
+		if ( ( it + sizeof(T) )<=(raw+bytes) )
+		{
+			t =  *((T*&)it)++;
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	inline char* ReadString()
+	{
+		char* str = it;
+		while ( *it++ )
+		{
+			// Overflowed
+			if ( it>=(raw+bytes) )
+				return nullptr;
+		}
+		return str;
+	}
+
+	inline bool Skip( unsigned long c )
+	{
+		it += c;
+		return it<(raw+bytes);
+	}
+
+	// Accessors
+	inline long size() const { return bytes; }
+
+public:
+	char* it;
+	long bytes;
+	char raw[1260];
+};
+
 
 
 SSQ_INTERFACE CBaseQuery : public IQuery
@@ -60,6 +108,9 @@ public:
 	bool Send( const void* data, long size );
 	// Receive some data
 	long Recv( void* buffer, long bytes );
+	bool Recv( bf_read& bf );
+	// Process multi-packet response, returns the whole thing in allocated memory
+	bool Read( bf_read& bf );
 	
 	// Async abstraction
 	virtual bool Perform( bool async );
