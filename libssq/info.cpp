@@ -20,7 +20,7 @@ private:
 
 bool CQueryInfo::Thread()
 {
-	char request[] = "\xFF\xFF\xFF\xFFTSource Engine Query";
+	static const char request[] = "\xFF\xFF\xFF\xFFTSource Engine Query";
 	if ( !Send( request, sizeof(request) ) )
 		goto failure;
 

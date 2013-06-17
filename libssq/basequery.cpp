@@ -43,7 +43,8 @@ bool CBaseQuery::Connect( const char* address, unsigned short portnr, long timeo
 
 	char buf[64];
 	const char* port = nullptr;
-	for ( unsigned int i = 0; address[i]; i++ )
+	unsigned int i;
+	for ( i = 0; address[i] && i<(sizeof(buf)-1); i++ )
 	{
 		char& c = buf[i] = address[i];
 		if ( c==':' )
@@ -53,6 +54,7 @@ bool CBaseQuery::Connect( const char* address, unsigned short portnr, long timeo
 			goto found_port;
 		}
 	}
+	buf[i] = 0;
 	// A port is required!
 	if ( !portnr )
 		return false;

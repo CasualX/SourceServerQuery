@@ -28,22 +28,6 @@ enum
 	A2A_ACK = 0x6A,
 };
 
-
-// Packet format
-#pragma pack(push,1)
-struct header_t
-{
-	long header;
-};
-struct header_multi_t : public header_t
-{
-	long id;
-	unsigned char total;
-	unsigned char number;
-	unsigned short size;
-};
-#pragma pack(pop)
-
 // Really need this...
 class bf_read
 {
