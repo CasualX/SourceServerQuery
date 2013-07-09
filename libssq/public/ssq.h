@@ -26,7 +26,7 @@ public:
 	virtual ~IQuery() { }
 
 	// Connect to an address (formatted <host>:<port>) and set the timeout
-	// Will not call into callback on failure
+	// The port parameter is optional and will override the address when given
 	virtual bool Connect( const char* address, unsigned short port = 0, long timeout = 5000 ) = 0;
 
 	// Disconnect if you want to reuse this object to do more queries on a different address
@@ -34,11 +34,14 @@ public:
 
 	// Begin the query, when async it'll return immediately
 	// Returns true if the request was a success or if the async thread was started correctly
-	// The only place that will call into the callback
+	// The only place that will call into the callbacks
 	virtual bool Perform( bool async = false ) = 0;
 
-	// Cancel the query or wait for it to finish
+	// Wait for the working query to finish
 	virtual void Wait( bool cancel = false ) = 0;
+
+	// Cancel the current running query
+	inline void Cancel() { Wait( true ); }
 };
 
 // Response callback for a rules query

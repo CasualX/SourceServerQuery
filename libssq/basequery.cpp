@@ -9,7 +9,7 @@ void CBaseQuery_Cleanup()
 {
 	::WSACleanup();
 }
-CBaseQuery::CBaseQuery() : _socket(INVALID_SOCKET), _thread(NULL)
+CBaseQuery::CBaseQuery() : _socket(INVALID_SOCKET), _thread(NULL), _deleteme(false)
 {
 	// Delayed init stuff
 	static bool once = false;
@@ -116,6 +116,7 @@ void CBaseQuery::Disconnect()
 		// Nothing to see here, move along!
 		// But seriously, do something if this fails?
 	}
+	_socket = INVALID_SOCKET;
 	// If this is called while we're still working, wait for it
 	// NOTE! We shouldn't have to wait long, closesocket should cancel the blocking calls!
 	if ( _thread )
@@ -129,6 +130,18 @@ void CBaseQuery::Disconnect()
 		_thread = NULL;
 	}
 }
+void CBaseQuery::CleanupAfterThread()
+{
+	// Callbacks indicated we've outgrown our usefulness, thread will finish running soon
+	// We need to clean this up here so Disconnect() doesn't hang
+	::CloseHandle( _thread );
+	::closesocket( _socket );
+	_thread = NULL;
+	_socket = INVALID_SOCKET;
+	delete this;
+}
+
+
 bool CBaseQuery::Send( const void* data, long bytes )
 {
 	return ::sendto( _socket, (const char*)data, bytes, 0, (const sockaddr*)&_addr, sizeof(_addr) )!=SOCKET_ERROR;
@@ -143,21 +156,72 @@ bool CBaseQuery::Recv( bf_read& bf )
 	bf.it = bf.raw;
 	return bf.bytes>0;
 }
-bool CBaseQuery::Read( bf_read& bf )
+bf_read* CBaseQuery::Response()
 {
-	// Buffer, 1260 is steam max packet size before split happens
-	unsigned char temp[1260];
-	// Buffers for each packet so we can put them in order
-	unsigned char* packets[4] = { nullptr, nullptr, nullptr, nullptr };
+	bf_read temp;
 
-	do
+	if ( Recv( temp ) )
 	{
-		// Read a packet
-		Recv( temp, sizeof(temp) );
+		long hdr = temp.Peek<long>();
+		if ( hdr==0xFFFFFFFF )
+		{
+			// Single packet
+			bf_read* out = (bf_read*) ::malloc( temp.bytes );
+			memcpy( out, &temp, temp.bytes );
+			return out;
+		}
+		else
+		{
+			// Multi-packet
+			bf_read* out = nullptr;
+			unsigned char expected, current, processed = 0;
+			long max_size = 0;
+			long total_size = 0;
 
+			goto begin_loop;
+			do
+			{
+				Recv( temp );
+begin_loop:
+				// Process the multi packet header
+				if ( temp.Read<long>()!=0xFFFFFFFE )
+					goto failure;
+				long id = temp.Read<long>();
+				// Compression not supported
+				if ( id&0x80000000 )
+					goto failure;
+				// Very picky about number of expected packets
+				if ( !temp.Read( expected ) || expected>8 )
+					goto failure;
+				// Current packet
+				if ( !temp.Read( current ) || current>=expected )
+					goto failure;
+				// Max packet size before switching
+				if ( !max_size )
+					max_size = temp.Read<unsigned short>();
+				else if ( max_size!=temp.Read<unsigned short>() )
+					goto failure;
+				// Allocate buffer
+				if ( !out )
+				{
+					out = (bf_read*) ::malloc( max_size * expected );
+					out->it = out->raw;
+					out->bytes = 0;
+				}
+				// Put stuff in it
+				long size = temp.bytes - 0xC;
+				memcpy( out->raw + (max_size*current), temp.it, size );
+				out->bytes += size;
+			}
+			while ( ++processed<expected );
+
+			return out;
+failure:
+			::free( out );
+		}
 	}
-	while ( true );
-	return false;
+
+	return nullptr;
 }
 bool CBaseQuery::Perform( bool async )
 {
@@ -199,6 +263,10 @@ DWORD CBaseQuery::Thunk( PVOID param )
 {
 	CBaseQuery* q = (CBaseQuery*)param;
 	q->Thread();
+
+	if ( q->_deleteme )
+	{
+	}
 #ifdef _DEBUG
 	return ::WSAGetLastError();
 #else

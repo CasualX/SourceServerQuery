@@ -10,7 +10,10 @@ class CQueryRules : public CBaseQuery
 public:
 	CQueryRules( IRulesResponse* cb );
 	virtual bool Thread();
-			void Parse( const char* str, long count );
+			//void Parse( const char* str, long count );
+
+			char* Parse( char* buf, char* end );
+			void Parse( bf_read& bf, char buf[256] );
 private:
 	IRulesResponse* _cb;
 };
@@ -22,38 +25,32 @@ CQueryRules::CQueryRules( IRulesResponse* cb ) : _cb(cb)
 bool CQueryRules::Thread()
 {
 	// Process rules
-	// FIXME! Support multi-packet and async responses!
-	// FIXME! Figure out why I get an empty multi-packet header here (need to skip 0xC bytes)!
-	bf_read bf;
 
-	if ( Challenge( A2S_RULES ) && Recv( bf ) && bf.Skip(0xC+4) && bf.Read<char>()==S2A_RULES )
+	bf_read* bf;
+	bool s = false;
+
+	if ( Challenge( A2S_RULES ) && ( bf = Response() ) )
 	{
-		long num = bf.Read<unsigned short>();
-		for ( ; num; --num )
+		long num;
+		if ( bf->Read<long>()==0xFFFFFFFF && bf->Read<unsigned char>()==S2A_RULES && ( num = bf->Read<unsigned short>() ) )
 		{
-			const char* rule;
-			const  char* value;
-			if ( ( rule = bf.ReadString() ) && ( value = bf.ReadString() ) )
+			for ( ; num; --num )
 			{
-				_cb->RulesResponded( rule, value );
+				const char* rule;
+				const  char* value;
+				if ( ( rule = bf->ReadString() ) && ( value = bf->ReadString() ) )
+				{
+					_cb->RulesResponded( rule, value );
+				}
 			}
-			else
-			{
-				// For now ignore overflows...
-				break;
-			}
+			s = true;
 		}
-		_cb->RulesFinished( true );
-		return true;
+
+		::free( bf );
 	}
-	_cb->RulesFinished( false );
-	return false;
+	_cb->RulesFinished( s );
+	return s;
 }
-void CQueryRules::Parse( const char* str, long size )
-{
-
-}
-
 
 
 IQuery* ServerRules( IRulesResponse* resp )

@@ -33,8 +33,11 @@ class bf_read
 {
 public:
 	template< typename T >
-	inline T& Read() { return *((T*&)it)++; }
+	inline T& Peek() { return *(T*)it; }
 	
+	template< typename T >
+	inline T& Read() { return *((T*&)it)++; }
+
 	template< typename T >
 	inline bool Read( T& t )
 	{
@@ -88,13 +91,16 @@ public:
 	virtual bool Connect( const char* address, unsigned short port, long timeout );
 	// Destroy the socket
 	virtual void Disconnect();
+	// Callback indicated we're not needed anymore
+	void CleanupAfterThread();
+
 	// Send some data
 	bool Send( const void* data, long size );
 	// Receive some data
 	long Recv( void* buffer, long bytes );
 	bool Recv( bf_read& bf );
-	// Process multi-packet response, returns the whole thing in allocated memory
-	bool Read( bf_read& bf );
+	// Handles multi packet stuff, please free the result
+	bf_read* Response();
 	
 	// Async abstraction
 	virtual bool Perform( bool async );
@@ -110,6 +116,7 @@ private:
 	sockaddr_in _addr;
 	SOCKET _socket;
 	HANDLE _thread;
+	bool _deleteme;
 };
 
 }
