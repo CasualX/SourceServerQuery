@@ -90,7 +90,7 @@ public:
 	// Create the socket and connect
 	virtual bool Connect( const char* address, unsigned short port, long timeout );
 	// Destroy the socket
-	virtual void Disconnect();
+	void Disconnect();
 	// Callback indicated we're not needed anymore
 	void CleanupAfterThread();
 
@@ -101,6 +101,7 @@ public:
 	bool Recv( bf_read& bf );
 	// Handles multi packet stuff, please free the result
 	bf_read* Response();
+	bf_read* ResponseMultiPacket( bf_read& temp );
 	
 	// Async abstraction
 	virtual bool Perform( bool async );

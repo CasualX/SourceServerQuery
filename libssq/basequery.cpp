@@ -172,55 +172,74 @@ bf_read* CBaseQuery::Response()
 		}
 		else
 		{
-			// Multi-packet
-			bf_read* out = nullptr;
-			unsigned char expected, current, processed = 0;
-			long max_size = 0;
-			long total_size = 0;
-
-			goto begin_loop;
-			do
-			{
-				Recv( temp );
-begin_loop:
-				// Process the multi packet header
-				if ( temp.Read<long>()!=0xFFFFFFFE )
-					goto failure;
-				long id = temp.Read<long>();
-				// Compression not supported
-				if ( id&0x80000000 )
-					goto failure;
-				// Very picky about number of expected packets
-				if ( !temp.Read( expected ) || expected>8 )
-					goto failure;
-				// Current packet
-				if ( !temp.Read( current ) || current>=expected )
-					goto failure;
-				// Max packet size before switching
-				if ( !max_size )
-					max_size = temp.Read<unsigned short>();
-				else if ( max_size!=temp.Read<unsigned short>() )
-					goto failure;
-				// Allocate buffer
-				if ( !out )
-				{
-					out = (bf_read*) ::malloc( max_size * expected );
-					out->it = out->raw;
-					out->bytes = 0;
-				}
-				// Put stuff in it
-				long size = temp.bytes - 0xC;
-				memcpy( out->raw + (max_size*current), temp.it, size );
-				out->bytes += size;
-			}
-			while ( ++processed<expected );
-
-			return out;
-failure:
-			::free( out );
+			return ResponseMultiPacket( temp );
 		}
 	}
 
+	return nullptr;
+}
+bf_read* CBaseQuery::ResponseMultiPacket( bf_read& temp )
+{
+	// Multi-packet
+	bf_read* out;
+	unsigned char expected, current, processed = 0;
+	long max_size;
+
+	goto begin_loop;
+	do
+	{
+		if ( !Recv( temp ) )
+			goto failure;
+
+begin_loop:
+		// Process the multi packet header
+		if ( temp.Read<long>()!=0xFFFFFFFE )
+			goto failure;
+		long id = temp.Read<long>();
+		// Compression not supported
+		if ( id&0x80000000 )
+			goto failure;
+		// First pass read stuff out
+		if ( processed==0 )
+		{
+			// Very picky, max 8 packets split
+			if ( ( expected = temp.Read<unsigned char>() )>8 )
+				goto failure;
+			// Current must remain consistent with expected
+			if ( ( current = temp.Read<unsigned char>() )>=expected )
+				goto failure;
+			// Max split packet size
+			if ( ( max_size = temp.Read<unsigned short>() )>1248 )
+				goto failure;
+			// Allocate a buffer (will not grow larger than 1248*8 bytes)
+			out = (bf_read*) ::malloc( max_size * expected );
+			out->it = out->raw;
+			out->bytes = 0;
+		}
+		// All other passes information must remain consistent
+		else
+		{
+			if ( expected!=temp.Read<unsigned char>() )
+				goto failure;
+			if ( ( current = temp.Read<unsigned char>() )>=expected )
+				goto failure;
+			if ( max_size!=temp.Read<unsigned short>() )
+				goto failure;
+		}
+		// Compute payload size and do checks we didn't do earlier
+		long size = temp.bytes - 0xC;
+		if ( size<=0 )
+			goto failure;
+		// Store the payload in its slot
+		memcpy( out->raw + (max_size*current), temp.it, size );
+		out->bytes += size;
+	}
+	while ( ++processed<expected );
+
+	return out;
+
+failure:
+	::free( out );
 	return nullptr;
 }
 bool CBaseQuery::Perform( bool async )

@@ -29,9 +29,6 @@ public:
 	// The port parameter is optional and will override the address when given
 	virtual bool Connect( const char* address, unsigned short port = 0, long timeout = 5000 ) = 0;
 
-	// Disconnect if you want to reuse this object to do more queries on a different address
-	virtual void Disconnect() = 0;
-
 	// Begin the query, when async it'll return immediately
 	// Returns true if the request was a success or if the async thread was started correctly
 	// The only place that will call into the callbacks
