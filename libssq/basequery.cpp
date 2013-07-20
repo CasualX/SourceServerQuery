@@ -5,10 +5,6 @@
 namespace ssq
 {
 
-void CBaseQuery_Cleanup()
-{
-	::WSACleanup();
-}
 CBaseQuery::CBaseQuery() : _socket(INVALID_SOCKET), _thread(NULL), _deleteme(false)
 {
 	// Delayed init stuff
@@ -23,8 +19,12 @@ CBaseQuery::CBaseQuery() : _socket(INVALID_SOCKET), _thread(NULL), _deleteme(fal
 			::WSACleanup();
 			throw std::exception( "Failed to initialize WSA!" );
 		}
-		atexit( &CBaseQuery_Cleanup );
+		atexit( &Cleanup );
 	}
+}
+void __cdecl CBaseQuery::Cleanup()
+{
+	::WSACleanup();
 }
 CBaseQuery::~CBaseQuery()
 {
@@ -32,6 +32,8 @@ CBaseQuery::~CBaseQuery()
 }
 bool CBaseQuery::Connect( const char* address, unsigned short portnr, long timeout )
 {
+	// This thing is just prepping info to send off to CreateSocket
+
 	if ( _socket!=INVALID_SOCKET || _thread )
 	{
 		// Already busy... Call Disconnect() first!
@@ -41,12 +43,12 @@ bool CBaseQuery::Connect( const char* address, unsigned short portnr, long timeo
 
 	// Separate host from port
 
-	char buf[64];
+	char buf_host[64];
 	const char* port = nullptr;
 	unsigned int i;
-	for ( i = 0; address[i] && i<(sizeof(buf)-1); i++ )
+	for ( i = 0; address[i] && i<(sizeof(buf_host)-1); i++ )
 	{
-		char& c = buf[i] = address[i];
+		char& c = buf_host[i] = address[i];
 		if ( c==':' )
 		{
 			c = 0;
@@ -54,59 +56,56 @@ bool CBaseQuery::Connect( const char* address, unsigned short portnr, long timeo
 			goto found_port;
 		}
 	}
-	buf[i] = 0;
+	buf_host[i] = 0;
+
 	// A port is required!
 	if ( !portnr )
 		return false;
+	char buf_port[8];
+	_itoa( portnr, buf_port, 10 );
+	port = buf_port;
+
 found_port:
 
-	// Lookup host name
-
 	addrinfo hint = {
-		AI_PASSIVE,
-		AF_INET,
-		SOCK_DGRAM,
-		IPPROTO_UDP,
-		0,
-		nullptr,
-		nullptr,
-		nullptr,
+		AI_PASSIVE, AF_INET, SOCK_DGRAM,
+		IPPROTO_UDP, 0,
+		nullptr, nullptr, nullptr,
 	};
 
+	_socket = CreateSocket( buf_host, port, &hint, timeout );
+	return _socket!=INVALID_SOCKET;
+}
+SOCKET CBaseQuery::CreateSocket( const char* host, const char* service, addrinfo* hint, long timeout )
+{
+	SOCKET sock = INVALID_SOCKET;
 	addrinfo* ptr;
-	if ( ::getaddrinfo( buf, port, &hint, &ptr ) || !ptr )
-		return false;
-
-	// Create the socket
-
-	_socket = ::socket( ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol );
-	if ( _socket!=INVALID_SOCKET )
+	if ( !( ::getaddrinfo( host, service, hint, &ptr ) || !ptr ) )
 	{
-		_addr = *(sockaddr_in*) ptr->ai_addr;
-		if ( portnr )
-			_addr.sin_port = ::htons( portnr );
+		// Create the socket
+		sock = ::socket( ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol );
+		if ( sock!=INVALID_SOCKET )
+		{
+			_addr = *(sockaddr_in*) ptr->ai_addr;
 
-		// Bind our socket
-		// Ignoring errors here as these are unlikely to fail, they'll be reported later anyway...
+			// Bind our socket
+			// Ignoring errors here as these are unlikely to fail, they'll be reported later anyway...
 
-		sockaddr_in local;
-		local.sin_family = AF_INET;
-		local.sin_addr.s_addr = INADDR_ANY;
-		local.sin_port = 0;
+			sockaddr_in local;
+			local.sin_family = AF_INET;
+			local.sin_addr.s_addr = INADDR_ANY;
+			local.sin_port = 0;
 
-		::bind( _socket, (const sockaddr*)&local, sizeof(local) );
-		::setsockopt( _socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout) );
+			::bind( sock, (const sockaddr*)&local, sizeof(local) );
+			::setsockopt( sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout) );
+		}
 
 		::freeaddrinfo( ptr );
-		return true;
 	}
-
-	::freeaddrinfo( ptr );
-
 #ifdef _DEBUG
-	int err = ::WSAGetLastError();
+	int err = GetLastError();
 #endif // _DEBUG
-	return false;
+	return sock;
 }
 void CBaseQuery::Disconnect()
 {
@@ -156,6 +155,10 @@ bool CBaseQuery::Recv( bf_read& bf )
 	bf.it = bf.raw;
 	return bf.bytes>0;
 }
+int CBaseQuery::GetLastError()
+{
+	return ::WSAGetLastError();
+}
 bf_read* CBaseQuery::Response()
 {
 	bf_read temp;
@@ -172,6 +175,7 @@ bf_read* CBaseQuery::Response()
 		}
 		else
 		{
+			// Multi-packet
 			return ResponseMultiPacket( temp );
 		}
 	}
@@ -180,7 +184,6 @@ bf_read* CBaseQuery::Response()
 }
 bf_read* CBaseQuery::ResponseMultiPacket( bf_read& temp )
 {
-	// Multi-packet
 	bf_read* out;
 	unsigned char expected, current, processed = 0;
 	long max_size;
@@ -199,7 +202,7 @@ begin_loop:
 		// Compression not supported
 		if ( id&0x80000000 )
 			goto failure;
-		// First pass read stuff out
+		// First packet read stuff out
 		if ( processed==0 )
 		{
 			// Very picky, max 8 packets split
@@ -209,14 +212,14 @@ begin_loop:
 			if ( ( current = temp.Read<unsigned char>() )>=expected )
 				goto failure;
 			// Max split packet size
-			if ( ( max_size = temp.Read<unsigned short>() )>1248 )
+			if ( ( max_size = temp.Read<unsigned short>() )>1248 || max_size<(temp.bytes-0xC) )
 				goto failure;
 			// Allocate a buffer (will not grow larger than 1248*8 bytes)
 			out = (bf_read*) ::malloc( max_size * expected );
 			out->it = out->raw;
 			out->bytes = 0;
 		}
-		// All other passes information must remain consistent
+		// All other packets, properties must remain consistent
 		else
 		{
 			if ( expected!=temp.Read<unsigned char>() )
@@ -261,7 +264,7 @@ bool CBaseQuery::Perform( bool async )
 		bool s = Thread();
 #ifdef _DEBUG
 		// Testing to see what went wrong...
-		int err = ::WSAGetLastError();
+		int err = GetLastError();
 #endif // _DEBUG
 		return s;
 	}
@@ -287,7 +290,7 @@ DWORD CBaseQuery::Thunk( PVOID param )
 	{
 	}
 #ifdef _DEBUG
-	return ::WSAGetLastError();
+	return q->GetLastError();
 #else
 	return 0;
 #endif // _DEBUG

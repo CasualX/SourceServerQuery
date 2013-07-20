@@ -86,9 +86,11 @@ SSQ_INTERFACE CBaseQuery : public IQuery
 public:
 	CBaseQuery();
 	~CBaseQuery();
+	static void Cleanup();
 
 	// Create the socket and connect
 	virtual bool Connect( const char* address, unsigned short port, long timeout );
+	SOCKET CreateSocket( const char* host, const char* service, addrinfo* hint, long timeout );
 	// Destroy the socket
 	void Disconnect();
 	// Callback indicated we're not needed anymore
@@ -99,6 +101,8 @@ public:
 	// Receive some data
 	long Recv( void* buffer, long bytes );
 	bool Recv( bf_read& bf );
+	// Errors and stuff
+	int GetLastError();
 	// Handles multi packet stuff, please free the result
 	bf_read* Response();
 	bf_read* ResponseMultiPacket( bf_read& temp );
